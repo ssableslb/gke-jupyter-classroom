@@ -14,7 +14,7 @@ Shell script for creating and managing the Container Engine Cluster and Cloud Pl
 
 ## Requirements
 - Launch with Google Cloud Shell in Cloud Platform project.
-- Preconfigure a Compute Engine VM running as an NFS Server as outlined in the tutorial:
+- Based on the following tutorial - it does not rely on a single node file server as the nfs server is created directly in the container:
  https://cloud.google.com/solutions/using-tensorflow-jupyterhub-classrooms
 
 
@@ -32,8 +32,7 @@ Shell script for creating and managing the Container Engine Cluster and Cloud Pl
   - create and deploy to a new cluster 
 
   `./gke-jupyter-classroom.sh --cluster-name jupyterhub1 --autoscale-nodes 6 --nodes 1 \
-       --filer-path /jupyterhub --filer-ip 10.240.0.6 --image-prefix my-images \
-	   --admin-user youremail@gmail.com deploy`
+       --image-prefix my-images --admin-user youremail@gmail.com deploy`
   
   - teardown the environment
   `./gke-jupyter-classroom.sh --cluster-name jupyterhub1  teardown`
@@ -75,14 +74,6 @@ Shell script for creating and managing the Container Engine Cluster and Cloud Pl
      Specify the domain name you will use with your certificates and OAUTH.  If you leave
      this blank, it will create a static IP and use xip.io for your domain
 
-   -f, --filer-ip
-   	Speciy the IP address of the shared NFS file server to save the Jupyter Notebooks and
-   	JupyterHub config files.  This can also be a domain name
-
-   -F, --filer-path
-     Specify the file path on the NFS file server that will be mounted as the root JupyterHub
-     directory. default is /mnt/jupyterhub
-  
    -i, --image-prefix
      Specify the prefix of the Docker image before you build it and push it to cloud repository
   

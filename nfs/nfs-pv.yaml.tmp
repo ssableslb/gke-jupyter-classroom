@@ -8,5 +8,5 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    server: 10.39.241.66
+    server: <FILER_IP>
     path: "/"

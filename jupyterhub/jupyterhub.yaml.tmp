@@ -107,9 +107,8 @@
               memory: 1000Mi
         volumes:
         - name: nfs
-          nfs:
-            server: <FILER_IP>  
-            path: "<FILER_PATH>"
+          persistentVolumeClaim:
+            claimName: nfs
         - name: manifests
           configMap:
             name: jhub-manifests

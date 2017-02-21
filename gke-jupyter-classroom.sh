@@ -46,9 +46,6 @@ have to build and push all the primary images:
     Nginx Proxy
     Jupyter+Datalab
 
-You will have to manually setup an NFS Filer Server in GCE to initialize this solution.
-Or use the Cloud Launcher to create one. 
-
 Flags:
   -a, --admin-user
     Specify the first default admin user's email address, this is likely your email
@@ -69,14 +66,6 @@ Flags:
   -D, --domain
     Specify the domain name you will use with your certificates and OAUTH.  If you leave
     this blank, it will create a static IP and use xip.io for your domain
-
-  -f, --filer-ip
-    Speciy the IP address of the shared NFS file server to save the Jupyter Notebooks and
-    JupyterHub config files.  This can also be a domain name
-
-  -F, --filer-path
-    Specify the file path on the NFS file server that will be mounted as the root JupyterHub
-    directory. default is /mnt/jupyterhub
 
   -i, --image-prefix
     Specify the prefix of the Docker image before you build it and push it to cloud repository
@@ -104,7 +93,7 @@ Flags:
 	for build command it will defautl to ${GCP_PROJECT}/${IMAGE_PREFIX}
 	for deploy command it will default to 'cloud-solutions-images'
 
-  -s, --sk ip-certs
+  -s, --skip-certs
     skip the creation of self signed certificates, presumes that you manually placed the correct
     files in the /tmp directory of your cloud shell instance
 
@@ -156,7 +145,7 @@ Examples:
   create and deploy to a new cluster 
 
   ./gke-jupyter-classroom.sh --cluster-name jupyterhub1 --autoscale-nodes 6 --nodes 1 \
-       --filer-path /jupyterhub --filer-ip 10.240.0.6 --image-prefix my-images \
+       --image-prefix my-images \
        --admin-user youremail@gmail.com deploy
   
   teardown the environment
@@ -212,7 +201,6 @@ function print_help() {
 
 function test() {
     loginfo "Testing stuff"
-    verify_ip
      if [ ${ERROR_COUNT} -gt 0 ]; then
         loginfo "*************ERRORS WHILE TESTING*************"
         exit 1
@@ -259,11 +247,6 @@ function validate() {
         logverbose "Verify AdminUser not Null"
         if [ -z ${ADMIN_USER} ]; then
             logerror "please specify an admin-user in the format name@address.com"
-        fi
-        logverbose "Verify IP Filer"
-        verify_ip
-        if [ -z ${FILER_PATH} ]; then
-            logerror "FILER_PATH value is empty"
         fi
 
         if [ -z ${DOMAIN} ]; then
@@ -320,22 +303,6 @@ function verify_gcp_project() {
         fi
     fi
 }
-
-function verify_ip() {
-
-    if ! grep -q '[[:alpha:]]' <<< $FILER_IP ; then  #this is a domain name then
-        read valid <<< $( awk -v ip="${FILER_IP}" '
-        BEGIN { n=split(ip, i,"."); e = 0;
-        if (6 < length(ip) && length(ip) < 16 && n == 4 && i[4] > 0 && i[1] > 0){
-            for(z in i){if (i[z] !~ /[0-9][0-9]?[0-9]?/ || i[z] > 255){e=1;break;}}
-        } else { e=2; } print(e);}')
-        logverbose "Verifying IP: Output = $valid"
-        if [ $valid != 0 ]; then
-            logerror "Invalid IP address ${FILER_IP} detected for shared filer server"
-        fi
-    fi
-}
-
 
 function build() {
     loginfo "Starting build ${BUILD_TARGET}"
@@ -419,7 +386,11 @@ function deploy() {
     if [ -z ${DOMAIN} ]; then
         create_static_ip
     fi
+    apply_nfs_server_to_cluster
+    detect_nfs_server_ip
+    create_nfs_k8s_manifest
     create_jhub_k8s_manifest
+    apply_nfs_volume_to_cluster
     create_certificate_secret
     create_oauth_secrets
     create_jhub_configmap
@@ -462,7 +433,7 @@ function teardown() {
                    "${GCLOUD} container clusters delete ${CLUSTER_NAME} -z ${ZONE}"
         fi
         set -e
-        loginfo "Don't forget to delete your file server and if you manually made a static IP address "
+        loginfo "Don't forget to delete  your static IP address if you manually made it "
     fi
 }
 
@@ -561,6 +532,11 @@ function create_jhub_k8s_manifest() {
     sed "s|<SINGLE_USER_IMAGE>|${SINGLE_USER_IMAGE}|" > ./jupyterhub.yaml
 }
 
+function create_nfs_k8s_manifest() {
+    loginfo "Creating nfs k8s manifest, please review the resulting file: nfs/nfs-pv.yaml"
+    sed  "s|<FILER_IP>|${FILER_IP}|g" ./nfs/nfs-pv.yaml.tmp > ./nfs/nfs-pv.yaml
+}
+
 function create_proxy_k8s_manifest() {
     local static_yaml=''
     if [ ! -z ${STATIC_IP} ]; then
@@ -629,6 +605,25 @@ function apply_proxy_to_cluster() {
     fi
 }
 
+function apply_nfs_server_to_cluster() {
+    if ${DRY_RUN} ; then
+        loginfo "Dry Run: Applying nfs related yaml with: kubectl"
+    else
+        ${KUBECTL} apply -f ./nfs/provisioner/nfs-server-gce-pv.yaml
+        ${KUBECTL} apply -f ./nfs/nfs-server-rc.yaml
+        ${KUBECTL} apply -f ./nfs/nfs-server-service.yaml
+    fi
+}
+
+function apply_nfs_volume_to_cluster() {
+    if ${DRY_RUN} ; then
+        loginfo "Dry Run: Applying nfs related yaml with: kubectl"
+    else
+        ${KUBECTL} apply -f ./nfs/nfs-pv.yaml
+        ${KUBECTL} apply -f ./nfs/nfs-pvc.yaml
+    fi
+}
+
 function create_health_check_firewall_rule() {
     ${GCLOUD} compute firewall-rules create ${CLUSTER_NAME}-proxy-fw \
     --source-ranges 130.211.0.0/22 \
@@ -689,6 +684,22 @@ function create_certificate_secret() {
             --from-file=/tmp/tls.crt \
             --from-file=/tmp/tls.key ${TRUSTED_CRT} \
             --from-file=/tmp/dhparam.pem --namespace jupyterhub
+    fi
+}
+
+function detect_nfs_server_ip() {
+    if ${DRY_RUN} ; then
+        loginfo "Dry Run: detect NFS server IP"
+    else
+        FILER_IP="$(${KUBECTL} describe services nfs-server --namespace jupyterhub | grep 'IP:' | awk  '{print $2}')"
+        loginfo "Sleeping for 10 seconds to allow network configurations to fully complete"
+        sleep 10s
+        while [ -z ${FILER_IP} ]; do
+            loginfo "Detecting IP for new NFS server this may take several minutes"
+            FILER_IP="$(${KUBECTL} describe services nfs-server --namespace jupyterhub | grep 'IP:' | awk  '{print $2}')"
+            sleep 5s
+        done
+        logverbose "FILER_IP=${FILER_IP}"
     fi
 }
 
@@ -821,9 +832,6 @@ do
       f)
           FILER_IP="${OPTARG}"
           ;;
-      F)
-          FILER_PATH="${OPTARG}"
-          ;;
       h)
           print_usage
           exit 0
@@ -902,7 +910,7 @@ IMAGE_PREFIX=${IMAGE_PREFIX:-'cloud-solutions-images'} #used only for build acti
 
 ERROR_COUNT=0 #used in validation step will exit if > 0
 FILER_IP=${FILER_IP:-''} #NFS File Server internal IP address
-FILER_PATH=${FILER_PATH:-'/mnt/jupyterhub'}
+FILER_PATH='/'
 GCP_PROJECT=""
 GCLOUD="$(which gcloud)"
 DOCKER="$(which docker)"
