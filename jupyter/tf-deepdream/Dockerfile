@@ -22,7 +22,8 @@ FROM b.gcr.io/tensorflow/tensorflow:latest
 
 WORKDIR "/notebooks"
 
-RUN apt-get -qq update && apt-get install -y zip wget python3-pip nfs-common \
+RUN apt-get -qq update && apt-get install -y zip wget && wget https://bootstrap.pypa.io/get-pip.py \
+    && python3 ./get-pip.py && apt-get install -y python3-pip nfs-common \
 	&& pip3 install --upgrade pip && pip3 install requests jinja2 tornado 'notebook>=4.1' terminado \
 	&& pip install --upgrade numpy \
 	&& curl -O https://storage.googleapis.com/download.tensorflow.org/models/inception5h.zip \
