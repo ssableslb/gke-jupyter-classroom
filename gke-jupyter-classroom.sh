@@ -804,7 +804,7 @@ for arg in "$@"; do
   esac
 done
 
-while getopts 'a:A:b:c:CdD:f:F:hi:m:M:n:o:O:pr:sStTuvxz:' OPTION
+while getopts 'a:A:bc:CdD:f:F:hi:m:M:n:o:O:pr:sStTuvxz:' OPTION
 do
   case $OPTION in
       A)
