@@ -308,10 +308,7 @@ function build() {
     loginfo "Starting build ${BUILD_TARGET}"
     case ${BUILD_TARGET} in
         "all")
-            build_deepdream
-            build_nginx_proxy
-            build_jupyterhub
-            build_gcptools
+            build_all
             ;;
         "deep")
             build_deepdream
@@ -376,7 +373,7 @@ function build_nginx_proxy() {
 function push_image_to_repo() {
     if ${PUSH_IMAGE} ; then
         loginfo "uploading image ${1} to repository"
-        ${GCLOUD} docker push ${1}
+        ${GCLOUD} docker -- push ${1}
     fi
 }
 
@@ -804,7 +801,7 @@ for arg in "$@"; do
   esac
 done
 
-while getopts 'a:A:bc:CdD:f:F:hi:m:M:n:o:O:pr:sStTuvxz:' OPTION
+while getopts 'a:A:b:c:CdD:f:F:hi:m:M:n:o:O:pr:sStTuvxz:' OPTION
 do
   case $OPTION in
       A)
