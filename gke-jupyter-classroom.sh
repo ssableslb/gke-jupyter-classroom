@@ -125,6 +125,7 @@ build                 Build one of the Docker images and optionally push to Cont
                       -    ngx = Nginx Proxy image
                       -    tools = Jupyter + Tensorflow, Google Datalab, & Dataflow SDK
                       -    jhub = JupyterHub image
+                      -    perf = Performance Dashboard
 
 create-cluster
 
@@ -310,6 +311,9 @@ function build() {
         "all")
             build_all
             ;;
+        "perf")
+            build_performance_dashboard
+            ;;
         "deep")
             build_deepdream
             ;;
@@ -335,6 +339,7 @@ function build_all() {
     build_gcptools
     build_jupyterhub
     build_nginx_proxy
+    build_performance_dashboard
 }
 
 #deep
@@ -344,6 +349,14 @@ function build_deepdream() {
     logverbose "tagging ${IMAGE_PREFIX}/tf-deepdream-su"
     docker tag "${IMAGE_PREFIX}/tf-deepdream-su" "gcr.io/${REPOSITORY_PATH}/tf-deepdream-su"
     push_image_to_repo "gcr.io/${REPOSITORY_PATH}/tf-deepdream-su"
+}
+
+build_performance_dashboard() {
+    logverbose "building ${IMAGE_PREFIX}/performance-dashboard"
+    docker build -t ${IMAGE_PREFIX}/performance-dashboard ./jupyter/performance-dashboard/
+    logverbose "tagging ${IMAGE_PREFIX}/performance-dashboard"
+    docker tag "${IMAGE_PREFIX}/performance-dashboard" "gcr.io/${REPOSITORY_PATH}/performance-dashboard"
+    push_image_to_repo "gcr.io/${REPOSITORY_PATH}/performance-dashboard"
 }
 
 #tools
