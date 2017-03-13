@@ -1,0 +1,28 @@
+# Create schema
+sqlacodegen --outfile schema.py postgresql://user:passwd@fr0235lin06.grabels-fr0235.slb.com:5432/benchmark
+
+
+
+
+
+
+mongodb:
+
+$ mongo
+
+> show dbs
+performance_dashboard  0.203GB
+
+> use performance_dashboard
+switched to db performance_dashboard
+
+> show collections
+benchmark_results
+
+> var schematodo = db.benchmark_results.findOne();
+> for (var key in schematodo) { print (key) ; }
+
+
+> db.benchmark_results.find().pretty()
+
+> db.benchmark_results.stats()

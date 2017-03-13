@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: importer-deployment
+  namespace: jupyterhub
+spec:
+  strategy:
+    type: Recreate
+  template: # create pods using pod definition in this template
+    metadata:
+      labels:
+        app: importer
+    spec:
+      containers:
+      - name: importer
+        image: jupyter/scipy-notebook
+        volumeMounts:
+        - name: nfs
+          mountPath: /nfs
+      volumes:
+      - name: nfs
+        persistentVolumeClaim:
+          claimName: nfs
