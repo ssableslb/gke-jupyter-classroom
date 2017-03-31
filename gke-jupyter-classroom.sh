@@ -936,7 +936,7 @@ MACHINE_TYPE=${MACHINE_TYPE:-'n1-standard-4'}
 PROXY_HEALTH="${CLUSTER_NAME}-proxy-health"
 REPOSITORY_PATH=${REPOSITORY_PATH:-''}
 
-SINGLE_USER_IMAGE=${SINGLE_USER_IMAGE:-'tf-deepdream-su:latest'}
+SINGLE_USER_IMAGE=${SINGLE_USER_IMAGE:-'performance-dashboard:latest'}
 SKIP_CERTS=${SKIP_CERTS:-false}
 SSL_TAG="${CLUSTER_NAME}-ssl" #should be able to change this for multiple deployments within the same project
 TRUSTED_CRT=${TRUSTED_CRT:-''}
