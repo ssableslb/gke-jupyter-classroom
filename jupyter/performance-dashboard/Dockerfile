@@ -3,7 +3,7 @@ FROM jupyter/scipy-notebook
 USER root
 
 RUN conda install --quiet --yes \
-    pymongo plotly pytables\
+    pymongo plotly pytables ipywidgets \
     && conda clean -tipsy
 
 RUN mkdir -p /notebooks
